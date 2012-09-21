@@ -10,7 +10,7 @@ namespace PetaPoco.DatabaseTypes
 {
 
 
-    internal class OracleDatabaseType : DatabaseType
+    internal class OracleNetDatabaseType : DatabaseType
     {
         public override string BuildPageQuery(long skip, long take, PagingHelper.SQLParts parts, ref object[] args)
         {
@@ -43,11 +43,9 @@ namespace PetaPoco.DatabaseTypes
                 db.ExecuteNonQueryHelper(cmd);
                 return param.Value;
             }
-            else
-            {
-                db.ExecuteNonQueryHelper(cmd);
-                return -1;
-            }
+
+            db.ExecuteNonQueryHelper(cmd);
+            return -1;
         }
 
         public override string GetAutoIncrementExpression(TableInfo ti)
@@ -67,7 +65,6 @@ namespace PetaPoco.DatabaseTypes
 
         public override void PreExecute(IDbCommand cmd)
         {
-            cmd.GetType().GetProperty("BindByName").SetValue(cmd, true, null);
         }
     }
 }

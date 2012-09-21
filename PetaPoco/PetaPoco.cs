@@ -3096,9 +3096,9 @@ namespace PetaPoco
 			/// <summary>
 			/// Returns the prefix used to delimit parameters in SQL query strings.
 			/// </summary>
-			/// <param name="ConnectionString"></param>
+			/// <param name="connectionString"></param>
 			/// <returns></returns>
-			public virtual string GetParameterPrefix(string ConnectionString)
+			public virtual string GetParameterPrefix(string connectionString)
 			{
 				return "@";
 			}
@@ -3113,7 +3113,7 @@ namespace PetaPoco
 				// Cast bools to integer
 				if (value.GetType() == typeof(bool))
 				{
-					return ((bool)value) ? 1 : 0;
+					return ((bool) value) ? 1 : 0;
 				}
 
 				// Leave it
@@ -3200,9 +3200,9 @@ namespace PetaPoco
 			/// </summary>
 			/// <param name="db">The calling Database object</param>
 			/// <param name="cmd">The insert command to be executed</param>
-			/// <param name="PrimaryKeyName">The primary key of the table being inserted into</param>
+			/// <param name="primaryKeyName">The primary key of the table being inserted into</param>
 			/// <returns>The ID of the newly inserted record</returns>
-			public virtual object ExecuteInsert(Database db, IDbCommand cmd, string PrimaryKeyName)
+			public virtual object ExecuteInsert(Database db, IDbCommand cmd, string primaryKeyName)
 			{
 				cmd.CommandText += ";\nSELECT @@IDENTITY AS NewID;";
 				return db.ExecuteScalarHelper(cmd);
@@ -3218,29 +3218,31 @@ namespace PetaPoco
 			public static DatabaseType Resolve(string TypeName, string ProviderName)
 			{
 				// Try using type name first (more reliable)
-				if (TypeName.StartsWith("MySql")) 
+				if (TypeName.StartsWith("MySql"))
 					return Singleton<MySqlDatabaseType>.Instance;
-				if (TypeName.StartsWith("SqlCe")) 
+				if (TypeName.StartsWith("SqlCe"))
 					return Singleton<SqlServerCEDatabaseType>.Instance;
-				if (TypeName.StartsWith("Npgsql") || TypeName.StartsWith("PgSql")) 
+				if (TypeName.StartsWith("Npgsql") || TypeName.StartsWith("PgSql"))
 					return Singleton<PostgreSQLDatabaseType>.Instance;
-				if (TypeName.StartsWith("Oracle")) 
+				if (TypeName.StartsWith("OracleClientFactory"))
+					return Singleton<OracleNetDatabaseType>.Instance;
+				if (TypeName.StartsWith("Oracle"))
 					return Singleton<OracleDatabaseType>.Instance;
-				if (TypeName.StartsWith("SQLite")) 
+				if (TypeName.StartsWith("SQLite"))
 					return Singleton<SQLiteDatabaseType>.Instance;
-				if (TypeName.StartsWith("System.Data.SqlClient.")) 
+				if (TypeName.StartsWith("System.Data.SqlClient."))
 					return Singleton<SqlServerDatabaseType>.Instance;
 
 				// Try again with provider name
-				if (ProviderName.IndexOf("MySql", StringComparison.InvariantCultureIgnoreCase) >= 0) 
+				if (ProviderName.IndexOf("MySql", StringComparison.InvariantCultureIgnoreCase) >= 0)
 					return Singleton<MySqlDatabaseType>.Instance;
-				if (ProviderName.IndexOf("SqlServerCe", StringComparison.InvariantCultureIgnoreCase) >= 0) 
+				if (ProviderName.IndexOf("SqlServerCe", StringComparison.InvariantCultureIgnoreCase) >= 0)
 					return Singleton<SqlServerCEDatabaseType>.Instance;
-				if (ProviderName.IndexOf("pgsql", StringComparison.InvariantCultureIgnoreCase) >= 0) 
+				if (ProviderName.IndexOf("pgsql", StringComparison.InvariantCultureIgnoreCase) >= 0)
 					return Singleton<PostgreSQLDatabaseType>.Instance;
-				if (ProviderName.IndexOf("Oracle", StringComparison.InvariantCultureIgnoreCase) >= 0) 
+				if (ProviderName.IndexOf("Oracle", StringComparison.InvariantCultureIgnoreCase) >= 0)
 					return Singleton<OracleDatabaseType>.Instance;
-				if (ProviderName.IndexOf("SQLite", StringComparison.InvariantCultureIgnoreCase) >= 0) 
+				if (ProviderName.IndexOf("SQLite", StringComparison.InvariantCultureIgnoreCase) >= 0)
 					return Singleton<SQLiteDatabaseType>.Instance;
 
 				// Assume SQL Server
@@ -3424,13 +3426,19 @@ namespace PetaPoco
 					var pd = new PocoData();
 					pd.TableInfo = new TableInfo();
 					pd.Columns = new Dictionary<string, PocoColumn>(StringComparer.OrdinalIgnoreCase);
-					pd.Columns.Add(primaryKeyName, new ExpandoColumn() { ColumnName = primaryKeyName });
+					pd.Columns.Add(primaryKeyName, new ExpandoColumn()
+					{
+						ColumnName = primaryKeyName
+					});
 					pd.TableInfo.PrimaryKey = primaryKeyName;
 					pd.TableInfo.AutoIncrement = true;
 					foreach (var col in (o as IDictionary<string, object>).Keys)
 					{
 						if (col != primaryKeyName)
-							pd.Columns.Add(col, new ExpandoColumn() { ColumnName = col });
+							pd.Columns.Add(col, new ExpandoColumn()
+							{
+								ColumnName = col
+							});
 					}
 					return pd;
 				}
@@ -3482,7 +3490,9 @@ namespace PetaPoco
 				}
 
 				// Build column list for automatic select
-				QueryColumns = (from c in Columns where !c.Value.ResultColumn select c.Key).ToArray();
+				QueryColumns = (from c in Columns
+								where !c.Value.ResultColumn
+								select c.Key).ToArray();
 
 			}
 
@@ -3500,190 +3510,190 @@ namespace PetaPoco
 
 				return PocoFactories.Get(key, () =>
 					{
-					// Create the method
-					var m = new DynamicMethod("petapoco_factory_" + PocoFactories.Count.ToString(), type, new Type[] { typeof(IDataReader) }, true);
-					var il = m.GetILGenerator();
-					var mapper = Mappers.GetMapper(type);
+						// Create the method
+						var m = new DynamicMethod("petapoco_factory_" + PocoFactories.Count.ToString(), type, new Type[] { typeof(IDataReader) }, true);
+						var il = m.GetILGenerator();
+						var mapper = Mappers.GetMapper(type);
 
 #if !PETAPOCO_NO_DYNAMIC
-					if (type == typeof(object))
-					{
-						// var poco=new T()
-						il.Emit(OpCodes.Newobj, typeof(System.Dynamic.ExpandoObject).GetConstructor(Type.EmptyTypes));			// obj
-
-						MethodInfo fnAdd = typeof(IDictionary<string, object>).GetMethod("Add");
-
-						// Enumerate all fields generating a set assignment for the column
-						for (int i = firstColumn; i < firstColumn + countColumns; i++)
-						{
-							var srcType = r.GetFieldType(i);
-
-							il.Emit(OpCodes.Dup);						// obj, obj
-							il.Emit(OpCodes.Ldstr, r.GetName(i));		// obj, obj, fieldname
-
-							// Get the converter
-							Func<object, object> converter = mapper.GetFromDbConverter((PropertyInfo)null, srcType);
-
-							/*
-							if (ForceDateTimesToUtc && converter == null && srcType == typeof(DateTime))
-								converter = delegate(object src) { return new DateTime(((DateTime)src).Ticks, DateTimeKind.Utc); };
-							*/
-
-							// Setup stack for call to converter
-							AddConverterToStack(il, converter);
-
-							// r[i]
-							il.Emit(OpCodes.Ldarg_0);					// obj, obj, fieldname, converter?,    rdr
-							il.Emit(OpCodes.Ldc_I4, i);					// obj, obj, fieldname, converter?,  rdr,i
-							il.Emit(OpCodes.Callvirt, fnGetValue);		// obj, obj, fieldname, converter?,  value
-
-							// Convert DBNull to null
-							il.Emit(OpCodes.Dup);						// obj, obj, fieldname, converter?,  value, value
-							il.Emit(OpCodes.Isinst, typeof(DBNull));	// obj, obj, fieldname, converter?,  value, (value or null)
-							var lblNotNull = il.DefineLabel();
-							il.Emit(OpCodes.Brfalse_S, lblNotNull);		// obj, obj, fieldname, converter?,  value
-							il.Emit(OpCodes.Pop);						// obj, obj, fieldname, converter?
-							if (converter != null)
-								il.Emit(OpCodes.Pop);					// obj, obj, fieldname, 
-							il.Emit(OpCodes.Ldnull);					// obj, obj, fieldname, null
-							if (converter != null)
-							{
-								var lblReady = il.DefineLabel();
-								il.Emit(OpCodes.Br_S, lblReady);
-								il.MarkLabel(lblNotNull);
-								il.Emit(OpCodes.Callvirt, fnInvoke);
-								il.MarkLabel(lblReady);
-							}
-							else
-							{
-								il.MarkLabel(lblNotNull);
-							}
-
-							il.Emit(OpCodes.Callvirt, fnAdd);
-						}
-					}
-					else
-#endif
-						if (type.IsValueType || type == typeof(string) || type == typeof(byte[]))
-						{
-							// Do we need to install a converter?
-							var srcType = r.GetFieldType(0);
-							var converter = GetConverter(mapper, null, srcType, type);
-
-							// "if (!rdr.IsDBNull(i))"
-							il.Emit(OpCodes.Ldarg_0);										// rdr
-							il.Emit(OpCodes.Ldc_I4_0);										// rdr,0
-							il.Emit(OpCodes.Callvirt, fnIsDBNull);							// bool
-							var lblCont = il.DefineLabel();
-							il.Emit(OpCodes.Brfalse_S, lblCont);
-							il.Emit(OpCodes.Ldnull);										// null
-							var lblFin = il.DefineLabel();
-							il.Emit(OpCodes.Br_S, lblFin);
-
-							il.MarkLabel(lblCont);
-
-							// Setup stack for call to converter
-							AddConverterToStack(il, converter);
-
-							il.Emit(OpCodes.Ldarg_0);										// rdr
-							il.Emit(OpCodes.Ldc_I4_0);										// rdr,0
-							il.Emit(OpCodes.Callvirt, fnGetValue);							// value
-
-							// Call the converter
-							if (converter != null)
-								il.Emit(OpCodes.Callvirt, fnInvoke);
-
-							il.MarkLabel(lblFin);
-							il.Emit(OpCodes.Unbox_Any, type);								// value converted
-						}
-						else
+						if (type == typeof(object))
 						{
 							// var poco=new T()
-							il.Emit(OpCodes.Newobj, type.GetConstructor(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic, null, new Type[0], null));
+							il.Emit(OpCodes.Newobj, typeof(System.Dynamic.ExpandoObject).GetConstructor(Type.EmptyTypes));			// obj
+
+							MethodInfo fnAdd = typeof(IDictionary<string, object>).GetMethod("Add");
 
 							// Enumerate all fields generating a set assignment for the column
 							for (int i = firstColumn; i < firstColumn + countColumns; i++)
 							{
-								// Get the PocoColumn for this db column, ignore if not known
-								PocoColumn pc;
-								if (!Columns.TryGetValue(r.GetName(i), out pc))
-									continue;
-
-								// Get the source type for this column
 								var srcType = r.GetFieldType(i);
-								var dstType = pc.PropertyInfo.PropertyType;
 
-								// "if (!rdr.IsDBNull(i))"
-								il.Emit(OpCodes.Ldarg_0);										// poco,rdr
-								il.Emit(OpCodes.Ldc_I4, i);										// poco,rdr,i
-								il.Emit(OpCodes.Callvirt, fnIsDBNull);							// poco,bool
-								var lblNext = il.DefineLabel();
-								il.Emit(OpCodes.Brtrue_S, lblNext);								// poco
+								il.Emit(OpCodes.Dup);						// obj, obj
+								il.Emit(OpCodes.Ldstr, r.GetName(i));		// obj, obj, fieldname
 
-								il.Emit(OpCodes.Dup);											// poco,poco
+								// Get the converter
+								Func<object, object> converter = mapper.GetFromDbConverter((PropertyInfo) null, srcType);
 
-								// Do we need to install a converter?
-								var converter = GetConverter(mapper, pc, srcType, dstType);
+								/*
+								if (ForceDateTimesToUtc && converter == null && srcType == typeof(DateTime))
+									converter = delegate(object src) { return new DateTime(((DateTime)src).Ticks, DateTimeKind.Utc); };
+								*/
 
-								// Fast
-								bool Handled = false;
-								if (converter == null)
+								// Setup stack for call to converter
+								AddConverterToStack(il, converter);
+
+								// r[i]
+								il.Emit(OpCodes.Ldarg_0);					// obj, obj, fieldname, converter?,    rdr
+								il.Emit(OpCodes.Ldc_I4, i);					// obj, obj, fieldname, converter?,  rdr,i
+								il.Emit(OpCodes.Callvirt, fnGetValue);		// obj, obj, fieldname, converter?,  value
+
+								// Convert DBNull to null
+								il.Emit(OpCodes.Dup);						// obj, obj, fieldname, converter?,  value, value
+								il.Emit(OpCodes.Isinst, typeof(DBNull));	// obj, obj, fieldname, converter?,  value, (value or null)
+								var lblNotNull = il.DefineLabel();
+								il.Emit(OpCodes.Brfalse_S, lblNotNull);		// obj, obj, fieldname, converter?,  value
+								il.Emit(OpCodes.Pop);						// obj, obj, fieldname, converter?
+								if (converter != null)
+									il.Emit(OpCodes.Pop);					// obj, obj, fieldname, 
+								il.Emit(OpCodes.Ldnull);					// obj, obj, fieldname, null
+								if (converter != null)
 								{
-									var valuegetter = typeof(IDataRecord).GetMethod("Get" + srcType.Name, new Type[] { typeof(int) });
-									if (valuegetter != null
-											&& valuegetter.ReturnType == srcType
-											&& (valuegetter.ReturnType == dstType || valuegetter.ReturnType == Nullable.GetUnderlyingType(dstType)))
-									{
-										il.Emit(OpCodes.Ldarg_0);										// *,rdr
-										il.Emit(OpCodes.Ldc_I4, i);										// *,rdr,i
-										il.Emit(OpCodes.Callvirt, valuegetter);							// *,value
-
-										// Convert to Nullable
-										if (Nullable.GetUnderlyingType(dstType) != null)
-										{
-											il.Emit(OpCodes.Newobj, dstType.GetConstructor(new Type[] { Nullable.GetUnderlyingType(dstType) }));
-										}
-
-										il.Emit(OpCodes.Callvirt, pc.PropertyInfo.GetSetMethod(true));		// poco
-										Handled = true;
-									}
+									var lblReady = il.DefineLabel();
+									il.Emit(OpCodes.Br_S, lblReady);
+									il.MarkLabel(lblNotNull);
+									il.Emit(OpCodes.Callvirt, fnInvoke);
+									il.MarkLabel(lblReady);
+								}
+								else
+								{
+									il.MarkLabel(lblNotNull);
 								}
 
-								// Not so fast
-								if (!Handled)
-								{
-									// Setup stack for call to converter
-									AddConverterToStack(il, converter);
-
-									// "value = rdr.GetValue(i)"
-									il.Emit(OpCodes.Ldarg_0);										// *,rdr
-									il.Emit(OpCodes.Ldc_I4, i);										// *,rdr,i
-									il.Emit(OpCodes.Callvirt, fnGetValue);							// *,value
-
-									// Call the converter
-									if (converter != null)
-										il.Emit(OpCodes.Callvirt, fnInvoke);
-
-									// Assign it
-									il.Emit(OpCodes.Unbox_Any, pc.PropertyInfo.PropertyType);		// poco,poco,value
-									il.Emit(OpCodes.Callvirt, pc.PropertyInfo.GetSetMethod(true));		// poco
-								}
-
-								il.MarkLabel(lblNext);
-							}
-
-							var fnOnLoaded = RecurseInheritedTypes<MethodInfo>(type, (x) => x.GetMethod("OnLoaded", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic, null, new Type[0], null));
-							if (fnOnLoaded != null)
-							{
-								il.Emit(OpCodes.Dup);
-								il.Emit(OpCodes.Callvirt, fnOnLoaded);
+								il.Emit(OpCodes.Callvirt, fnAdd);
 							}
 						}
+						else
+#endif
+							if (type.IsValueType || type == typeof(string) || type == typeof(byte[]))
+							{
+								// Do we need to install a converter?
+								var srcType = r.GetFieldType(0);
+								var converter = GetConverter(mapper, null, srcType, type);
 
-					il.Emit(OpCodes.Ret);
+								// "if (!rdr.IsDBNull(i))"
+								il.Emit(OpCodes.Ldarg_0);										// rdr
+								il.Emit(OpCodes.Ldc_I4_0);										// rdr,0
+								il.Emit(OpCodes.Callvirt, fnIsDBNull);							// bool
+								var lblCont = il.DefineLabel();
+								il.Emit(OpCodes.Brfalse_S, lblCont);
+								il.Emit(OpCodes.Ldnull);										// null
+								var lblFin = il.DefineLabel();
+								il.Emit(OpCodes.Br_S, lblFin);
 
-					// Cache it, return it
-					return m.CreateDelegate(Expression.GetFuncType(typeof(IDataReader), type));
+								il.MarkLabel(lblCont);
+
+								// Setup stack for call to converter
+								AddConverterToStack(il, converter);
+
+								il.Emit(OpCodes.Ldarg_0);										// rdr
+								il.Emit(OpCodes.Ldc_I4_0);										// rdr,0
+								il.Emit(OpCodes.Callvirt, fnGetValue);							// value
+
+								// Call the converter
+								if (converter != null)
+									il.Emit(OpCodes.Callvirt, fnInvoke);
+
+								il.MarkLabel(lblFin);
+								il.Emit(OpCodes.Unbox_Any, type);								// value converted
+							}
+							else
+							{
+								// var poco=new T()
+								il.Emit(OpCodes.Newobj, type.GetConstructor(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic, null, new Type[0], null));
+
+								// Enumerate all fields generating a set assignment for the column
+								for (int i = firstColumn; i < firstColumn + countColumns; i++)
+								{
+									// Get the PocoColumn for this db column, ignore if not known
+									PocoColumn pc;
+									if (!Columns.TryGetValue(r.GetName(i), out pc))
+										continue;
+
+									// Get the source type for this column
+									var srcType = r.GetFieldType(i);
+									var dstType = pc.PropertyInfo.PropertyType;
+
+									// "if (!rdr.IsDBNull(i))"
+									il.Emit(OpCodes.Ldarg_0);										// poco,rdr
+									il.Emit(OpCodes.Ldc_I4, i);										// poco,rdr,i
+									il.Emit(OpCodes.Callvirt, fnIsDBNull);							// poco,bool
+									var lblNext = il.DefineLabel();
+									il.Emit(OpCodes.Brtrue_S, lblNext);								// poco
+
+									il.Emit(OpCodes.Dup);											// poco,poco
+
+									// Do we need to install a converter?
+									var converter = GetConverter(mapper, pc, srcType, dstType);
+
+									// Fast
+									bool Handled = false;
+									if (converter == null)
+									{
+										var valuegetter = typeof(IDataRecord).GetMethod("Get" + srcType.Name, new Type[] { typeof(int) });
+										if (valuegetter != null
+												&& valuegetter.ReturnType == srcType
+												&& (valuegetter.ReturnType == dstType || valuegetter.ReturnType == Nullable.GetUnderlyingType(dstType)))
+										{
+											il.Emit(OpCodes.Ldarg_0);										// *,rdr
+											il.Emit(OpCodes.Ldc_I4, i);										// *,rdr,i
+											il.Emit(OpCodes.Callvirt, valuegetter);							// *,value
+
+											// Convert to Nullable
+											if (Nullable.GetUnderlyingType(dstType) != null)
+											{
+												il.Emit(OpCodes.Newobj, dstType.GetConstructor(new Type[] { Nullable.GetUnderlyingType(dstType) }));
+											}
+
+											il.Emit(OpCodes.Callvirt, pc.PropertyInfo.GetSetMethod(true));		// poco
+											Handled = true;
+										}
+									}
+
+									// Not so fast
+									if (!Handled)
+									{
+										// Setup stack for call to converter
+										AddConverterToStack(il, converter);
+
+										// "value = rdr.GetValue(i)"
+										il.Emit(OpCodes.Ldarg_0);										// *,rdr
+										il.Emit(OpCodes.Ldc_I4, i);										// *,rdr,i
+										il.Emit(OpCodes.Callvirt, fnGetValue);							// *,value
+
+										// Call the converter
+										if (converter != null)
+											il.Emit(OpCodes.Callvirt, fnInvoke);
+
+										// Assign it
+										il.Emit(OpCodes.Unbox_Any, pc.PropertyInfo.PropertyType);		// poco,poco,value
+										il.Emit(OpCodes.Callvirt, pc.PropertyInfo.GetSetMethod(true));		// poco
+									}
+
+									il.MarkLabel(lblNext);
+								}
+
+								var fnOnLoaded = RecurseInheritedTypes<MethodInfo>(type, (x) => x.GetMethod("OnLoaded", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic, null, new Type[0], null));
+								if (fnOnLoaded != null)
+								{
+									il.Emit(OpCodes.Dup);
+									il.Emit(OpCodes.Callvirt, fnOnLoaded);
+								}
+							}
+
+						il.Emit(OpCodes.Ret);
+
+						// Cache it, return it
+						return m.CreateDelegate(Expression.GetFuncType(typeof(IDataReader), type));
 					}
 				);
 			}
@@ -3716,9 +3726,12 @@ namespace PetaPoco
 				}
 
 				// Standard DateTime->Utc mapper
-				if (pc!=null && pc.ForceToUtc && srcType == typeof(DateTime) && (dstType == typeof(DateTime) || dstType == typeof(DateTime?)))
+				if (pc != null && pc.ForceToUtc && srcType == typeof(DateTime) && (dstType == typeof(DateTime) || dstType == typeof(DateTime?)))
 				{
-					return delegate(object src) { return new DateTime(((DateTime)src).Ticks, DateTimeKind.Utc); };
+					return delegate(object src)
+					{
+						return new DateTime(((DateTime) src).Ticks, DateTimeKind.Utc);
+					};
 				}
 
 				// Forced type conversion including integral types -> enum
@@ -3726,22 +3739,67 @@ namespace PetaPoco
 				{
 					if (srcType != typeof(int))
 					{
-						return delegate(object src) { return Convert.ChangeType(src, typeof(int), null); };
+						return delegate(object src)
+						{
+							return Convert.ChangeType(src, typeof(int), null);
+						};
 					}
 				}
 				else if (!dstType.IsAssignableFrom(srcType))
 				{
 					if (dstType.IsEnum && srcType == typeof(string))
 					{
-						return delegate(object src) { return EnumMapper.EnumFromString(dstType, (string)src); };
+						return delegate(object src)
+						{
+							return EnumMapper.EnumFromString(dstType, (string) src);
+						};
 					}
-					else
+					if (dstType.IsEnum && IsNumericType(srcType))
 					{
-						return delegate(object src) { return Convert.ChangeType(src, dstType, null); };
+						return delegate(object src)
+						{
+							return Enum.ToObject(dstType, Convert.ToInt32(src));
+						};
 					}
+					return delegate(object src)
+					{
+						return Convert.ChangeType(src, dstType, null);
+					};
 				}
 
 				return null;
+			}
+
+			private static bool IsNumericType(Type type)
+			{
+				if (type == null)
+				{
+					return false;
+				}
+
+				switch (Type.GetTypeCode(type))
+				{
+					case TypeCode.Byte:
+					case TypeCode.Decimal:
+					case TypeCode.Double:
+					case TypeCode.Int16:
+					case TypeCode.Int32:
+					case TypeCode.Int64:
+					case TypeCode.SByte:
+					case TypeCode.Single:
+					case TypeCode.UInt16:
+					case TypeCode.UInt32:
+					case TypeCode.UInt64:
+						return true;
+					case TypeCode.Object:
+						if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>))
+						{
+							return IsNumericType(Nullable.GetUnderlyingType(type));
+						}
+						return false;
+				}
+				return false;
+
 			}
 
 
@@ -3771,9 +3829,21 @@ namespace PetaPoco
 			static MethodInfo fnListGetItem = typeof(List<Func<object, object>>).GetProperty("Item").GetGetMethod();
 			static MethodInfo fnInvoke = typeof(Func<object, object>).GetMethod("Invoke");
 			public Type type;
-			public string[] QueryColumns { get; private set; }
-			public TableInfo TableInfo { get; private set; }
-			public Dictionary<string, PocoColumn> Columns { get; private set; }
+			public string[] QueryColumns
+			{
+				get;
+				private set;
+			}
+			public TableInfo TableInfo
+			{
+				get;
+				private set;
+			}
+			public Dictionary<string, PocoColumn> Columns
+			{
+				get;
+				private set;
+			}
 			Cache<Tuple<string, string, int, int>, Delegate> PocoFactories = new Cache<Tuple<string, string, int, int>, Delegate>();
 		}
 
@@ -4059,7 +4129,8 @@ namespace PetaPoco
 				);
 			}
 
-			static Regex rxParams = new Regex(@"(?<!@)@\w+", RegexOptions.Compiled);
+			// TODO Сделать параметром.
+			static Regex rxParams = new Regex(@"(?<!:):\w+", RegexOptions.Compiled);
 		}
 
 		static class Singleton<T> where T : new()
@@ -4073,9 +4144,9 @@ namespace PetaPoco
 	{
 		class MySqlDatabaseType : DatabaseType
 		{
-			public override string GetParameterPrefix(string ConnectionString)
+			public override string GetParameterPrefix(string connectionString)
 			{
-				if (ConnectionString != null && ConnectionString.IndexOf("Allow User Variables=true") >= 0)
+				if (connectionString != null && connectionString.IndexOf("Allow User Variables=true") >= 0)
 					return "?";
 				else
 					return "@";
@@ -4086,28 +4157,23 @@ namespace PetaPoco
 				return string.Format("`{0}`", str);
 			}
 
-			public override string  GetExistsSql()
+			public override string GetExistsSql()
 			{
 				return "SELECT EXISTS (SELECT 1 FROM {0} WHERE {1})";
 			}
 		}
 
-		class OracleDatabaseType : DatabaseType
+
+
+		internal class OracleDatabaseType : DatabaseType
 		{
-			public override string GetParameterPrefix(string ConnectionString)
-			{
-				return ":";
-			}
-
-			public override void PreExecute(IDbCommand cmd)
-			{
-				cmd.GetType().GetProperty("BindByName").SetValue(cmd, true, null);
-			}
-
 			public override string BuildPageQuery(long skip, long take, PagingHelper.SQLParts parts, ref object[] args)
 			{
 				if (parts.sqlSelectRemoved.StartsWith("*"))
-					throw new Exception("Query must alias '*' when performing a paged query.\neg. select t.* from table t order by t.id");
+				{
+					throw new Exception(
+						"Query must alias '*' when performing a paged query.\neg. select t.* from table t order by t.id");
+				}
 
 				// Same deal as SQL Server
 				return Singleton<SqlServerDatabaseType>.Instance.BuildPageQuery(skip, take, parts, ref args);
@@ -4118,19 +4184,11 @@ namespace PetaPoco
 				return string.Format("\"{0}\"", str.ToUpperInvariant());
 			}
 
-			public override string GetAutoIncrementExpression(TableInfo ti)
+			public override object ExecuteInsert(Database db, IDbCommand cmd, string primaryKeyName)
 			{
-				if (!string.IsNullOrEmpty(ti.SequenceName))
-					return string.Format("{0}.nextval", ti.SequenceName);
-
-				return null;
-			}
-
-			public override object ExecuteInsert(Database db, IDbCommand cmd, string PrimaryKeyName)
-			{
-				if (PrimaryKeyName != null)
+				if (primaryKeyName != null)
 				{
-					cmd.CommandText += string.Format(" returning {0} into :newid", EscapeSqlIdentifier(PrimaryKeyName));
+					cmd.CommandText += string.Format(" returning {0} into :newid", this.EscapeSqlIdentifier(primaryKeyName));
 					var param = cmd.CreateParameter();
 					param.ParameterName = ":newid";
 					param.Value = DBNull.Value;
@@ -4147,6 +4205,85 @@ namespace PetaPoco
 				}
 			}
 
+			public override string GetAutoIncrementExpression(TableInfo ti)
+			{
+				if (!string.IsNullOrEmpty(ti.SequenceName))
+				{
+					return string.Format("{0}.nextval", ti.SequenceName);
+				}
+
+				return null;
+			}
+
+			public override string GetParameterPrefix(string connectionString)
+			{
+				return ":";
+			}
+
+			public override void PreExecute(IDbCommand cmd)
+			{
+				cmd.GetType().GetProperty("BindByName").SetValue(cmd, true, null);
+			}
+		}
+
+
+
+		internal class OracleNetDatabaseType : DatabaseType
+		{
+			public override string BuildPageQuery(long skip, long take, PagingHelper.SQLParts parts, ref object[] args)
+			{
+				if (parts.sqlSelectRemoved.StartsWith("*"))
+				{
+					throw new Exception(
+						"Query must alias '*' when performing a paged query.\neg. select t.* from table t order by t.id");
+				}
+
+				// Same deal as SQL Server
+				return Singleton<SqlServerDatabaseType>.Instance.BuildPageQuery(skip, take, parts, ref args);
+			}
+
+			public override string EscapeSqlIdentifier(string str)
+			{
+				return string.Format("\"{0}\"", str.ToUpperInvariant());
+			}
+
+			public override object ExecuteInsert(Database db, IDbCommand cmd, string primaryKeyName)
+			{
+				if (primaryKeyName != null)
+				{
+					cmd.CommandText += string.Format(" returning {0} into :newid", this.EscapeSqlIdentifier(primaryKeyName));
+					var param = cmd.CreateParameter();
+					param.ParameterName = ":newid";
+					param.Value = DBNull.Value;
+					param.Direction = ParameterDirection.ReturnValue;
+					param.DbType = DbType.Int64;
+					cmd.Parameters.Add(param);
+					db.ExecuteNonQueryHelper(cmd);
+					return param.Value;
+				}
+
+				db.ExecuteNonQueryHelper(cmd);
+				return -1;
+			}
+
+			public override string GetAutoIncrementExpression(TableInfo ti)
+			{
+				if (!string.IsNullOrEmpty(ti.SequenceName))
+				{
+					return string.Format("{0}.nextval", ti.SequenceName);
+				}
+
+				return null;
+			}
+
+			public override string GetParameterPrefix(string connectionString)
+			{
+				return ":";
+			}
+
+			public override void PreExecute(IDbCommand cmd)
+			{
+			}
 		}
 
 		class PostgreSQLDatabaseType : DatabaseType
@@ -4165,11 +4302,11 @@ namespace PetaPoco
 				return string.Format("\"{0}\"", str);
 			}
 
-			public override object ExecuteInsert(Database db, System.Data.IDbCommand cmd, string PrimaryKeyName)
+			public override object ExecuteInsert(Database db, System.Data.IDbCommand cmd, string primaryKeyName)
 			{
-				if (PrimaryKeyName != null)
+				if (primaryKeyName != null)
 				{
-					cmd.CommandText += string.Format("returning {0} as NewID", EscapeSqlIdentifier(PrimaryKeyName));
+					cmd.CommandText += string.Format("returning {0} as NewID", EscapeSqlIdentifier(primaryKeyName));
 					return db.ExecuteScalarHelper(cmd);
 				}
 				else
@@ -4185,14 +4322,14 @@ namespace PetaPoco
 			public override object MapParameterValue(object value)
 			{
 				if (value.GetType() == typeof(uint))
-					return (long)((uint)value);
+					return (long) ((uint) value);
 
 				return base.MapParameterValue(value);
 			}
 
-			public override object ExecuteInsert(Database db, System.Data.IDbCommand cmd, string PrimaryKeyName)
+			public override object ExecuteInsert(Database db, System.Data.IDbCommand cmd, string primaryKeyName)
 			{
-				if (PrimaryKeyName != null)
+				if (primaryKeyName != null)
 				{
 					cmd.CommandText += ";\nSELECT last_insert_rowid();";
 					return db.ExecuteScalarHelper(cmd);
@@ -4215,12 +4352,12 @@ namespace PetaPoco
 		{
 			public override string BuildPageQuery(long skip, long take, PagingHelper.SQLParts parts, ref object[] args)
 			{
-				var	sqlPage = string.Format("{0}\nOFFSET @{1} ROWS FETCH NEXT @{2} ROWS ONLY", parts.sql, args.Length, args.Length + 1);
+				var sqlPage = string.Format("{0}\nOFFSET @{1} ROWS FETCH NEXT @{2} ROWS ONLY", parts.sql, args.Length, args.Length + 1);
 				args = args.Concat(new object[] { skip, take }).ToArray();
 				return sqlPage;
 			}
 
-			public override object ExecuteInsert(Database db, System.Data.IDbCommand cmd, string PrimaryKeyName)
+			public override object ExecuteInsert(Database db, System.Data.IDbCommand cmd, string primaryKeyName)
 			{
 				db.ExecuteNonQueryHelper(cmd);
 				return db.ExecuteScalar<object>("SELECT @@@IDENTITY AS NewID;");
@@ -4244,7 +4381,7 @@ namespace PetaPoco
 				return sqlPage;
 			}
 
-			public override object ExecuteInsert(Database db, System.Data.IDbCommand cmd, string PrimaryKeyName)
+			public override object ExecuteInsert(Database db, System.Data.IDbCommand cmd, string primaryKeyName)
 			{
 				return db.ExecuteScalarHelper(cmd);
 			}
