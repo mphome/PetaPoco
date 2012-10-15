@@ -1,0 +1,10 @@
+bin
+obj
+*.suo
+*.pdb
+*.nupkg
+*.user
+*.pdb
+*.exe
+_ReSharper*
+PetaPoco\\PetaPoco.cs
