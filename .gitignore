@@ -8,3 +8,5 @@ obj
 *.exe
 _ReSharper*
 PetaPoco\\PetaPoco.cs
+PetaPoco/PetaPoco.cs
+Output*/
