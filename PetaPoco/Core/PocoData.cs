@@ -80,6 +80,8 @@ namespace PetaPoco.Internal
                 pc.PropertyInfo = pi;
                 pc.ColumnName = ci.ColumnName;
                 pc.ResultColumn = ci.ResultColumn;
+                pc.OnlyInsert = ci.InsertOnly;
+                pc.OnlyUpdate = ci.UpdateOnly;
                 pc.ForceToUtc = ci.ForceToUtc;
 
                 // Store it
