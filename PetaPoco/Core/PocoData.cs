@@ -360,12 +360,36 @@ namespace PetaPoco.Internal
                         return Enum.ToObject(dstType, Convert.ToInt32(src));
                     };
                 }
+       
                 return delegate(object src)
                 {
+
+                    //return Convert.ChangeType(src, dstType, null);
+
+                    Type u = Nullable.GetUnderlyingType(dstType);
+                    if (u != null)
+                    {
+                        if (src == null)
+                        {
+                            return GetDefault(dstType);
+                        }
+                        return Convert.ChangeType(src, u);
+                    }
                     return Convert.ChangeType(src, dstType, null);
+
                 };
+               
             }
 
+            return null;
+        }
+
+        private static object GetDefault(Type type)
+        {
+            if (type.IsValueType)
+            {
+                return Activator.CreateInstance(type);
+            }
             return null;
         }
 
